@@ -1,12 +1,21 @@
-version: "3.9"
+version: "3.3"
 
 services:
-  hadoop-nn:
+  namenode:
     image: octo5/hadoop-nn:3.3.0
     env_file:
       - ./hadoop.env
     networks:
-      - hadoop
+      - internal
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    ports:
+      - 9870:9870
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
     deploy:
       mode: replicated
       replicas: 1
@@ -14,14 +23,24 @@ services:
         condition: on-failure
       placement:
         constraints:
-          - node.hostname == node1
+          - node.labels.hadoop == node1
 
-  hadoop-rm:
+  resourcemanager:
     image: octo5/hadoop-rm:3.3.0
+    depends_on:
+      - namenode
+      - datanode
     env_file:
       - ./hadoop.env
     networks:
-      - hadoop
+      - internal
+    ports:
+      - 8088:8088
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
     deploy:
       mode: replicated
       replicas: 1
@@ -29,54 +48,149 @@ services:
         condition: on-failure
       placement:
         constraints:
-          - node.hostname == node1
+          - node.labels.hadoop == node1
 
-  hadoop-hs:
-    image: octo5/hadoop-hs:3.3.0
+  timelineserver:
+    image: octo5/hadoop-ts:3.3.0
+    depends_on:
+      - namenode
+      - datanode
+      - resourcemanager
     env_file:
       - ./hadoop.env
     networks:
-      - hadoop
+      - internal
+    volumes:
+      - timelineserver-data:/hadoop/yarn/timeline
+    ports:
+      - 8188:8188
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
     deploy:
       mode: replicated
       replicas: 1
+      restart_policy:
+        condition: on-failure
       placement:
         constraints:
-          - node.hostname == node1
+          - node.labels.hadoop == node1
 
-  hadoop-dn:
+  datanode:
+    depends_on:
+      - namenode
     image: octo5/hadoop-dn:3.3.0
     env_file:
       - ./hadoop.env
     networks:
-      - hadoop
+      - internal
+    volumes:
+      - datanode-data:/hadoop/dfs/data
+    ports:
+      - 9864:9864
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 1
       restart_policy:
         condition: on-failure
       placement:
         constraints:
-          - node.labels.hadoop == worker
+          - node.labels.hadoop == node1
 
-  hadoop-nm:
+  nodemanager:
     image: octo5/hadoop-nm:3.3.0
+    depends_on:
+      - namenode
+      - datanode
+      - resourcemanager
     env_file:
       - ./hadoop.env
     networks:
-      - hadoop
+      - internal
+    ports:
+      - 8042:8042
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 1
       restart_policy:
         condition: on-failure
       placement:
         constraints:
-          - node.labels.hadoop == worker
+          - node.labels.hadoop == node1
 
-            #volumes:
-            #  datanode:
-            #  namenode:
-            #  hadoop_historyserver:
+  hive-server:
+    image: octo5/hadoop-hive:3.1.2
+    depends_on:
+      - namenode
+      - datanode
+      - hive-metastore-db
+    env_file:
+      - ./hadoop.env
+    networks:
+      - internal
+    ports:
+      - 10000:10000
+      - 10002:10002
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.hadoop == node1
+
+  hive-metastore-db:
+    image: postgres:13.2
+    environment:
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    networks:
+      - internal
+    ports:
+      - 5432:5432
+    volumes:
+      - ./hive-metastore-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - metastore-data:/var/lib/postgresql/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.hadoop == node1
+
+volumes:
+  namenode-data:
+  datanode-data:
+  timelineserver-data:
+  metastore-data:
 
 networks:
-  hadoop:
-    external: true
+  internal:
+    driver: overlay
+    attachable: true

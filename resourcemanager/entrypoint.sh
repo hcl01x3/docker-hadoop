@@ -1,8 +1,8 @@
 #!/bin/bash
 
-
 if [[ "$1" = "hadoop-rm" ]]; then
-  yarn resourcemananger
+  ./setup.sh
+  yarn resourcemanager
 else
   exec "$@"
 fi

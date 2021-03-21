@@ -11,4 +11,4 @@ RUN chmod 0755 ./entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
 
-CMD ["hadoop-hs"]
+CMD ["hadoop-ts"]
