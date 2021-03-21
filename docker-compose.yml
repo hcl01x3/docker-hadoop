@@ -1,0 +1,82 @@
+version: "3.9"
+
+services:
+  hadoop-nn:
+    image: octo5/hadoop-nn:3.3.0
+    env_file:
+      - ./hadoop.env
+    networks:
+      - hadoop
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.hostname == node1
+
+  hadoop-rm:
+    image: octo5/hadoop-rm:3.3.0
+    env_file:
+      - ./hadoop.env
+    networks:
+      - hadoop
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.hostname == node1
+
+  hadoop-hs:
+    image: octo5/hadoop-hs:3.3.0
+    env_file:
+      - ./hadoop.env
+    networks:
+      - hadoop
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == node1
+
+  hadoop-dn:
+    image: octo5/hadoop-dn:3.3.0
+    env_file:
+      - ./hadoop.env
+    networks:
+      - hadoop
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.hadoop == worker
+
+  hadoop-nm:
+    image: octo5/hadoop-nm:3.3.0
+    env_file:
+      - ./hadoop.env
+    networks:
+      - hadoop
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.hadoop == worker
+
+            #volumes:
+            #  datanode:
+            #  namenode:
+            #  hadoop_historyserver:
+
+networks:
+  hadoop:
+    external: true
