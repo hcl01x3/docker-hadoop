@@ -21,7 +21,7 @@ ENV PATH=$PATH:$JAVA_HOME/bin
 ENV PATH=$PATH:$HADOOP_HOME/bin
 ENV PATH=$PATH:$HADOOP_HOME/sbin
 
-RUN curl -fSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz \ 
+RUN curl -fSL "$HADOOP_URL" -o /tmp/hadoop.tar.gz \
   && mkdir /usr/local/hadoop \
   && tar xzf /tmp/hadoop.tar.gz -C $HADOOP_HOME --strip-components 1 \
   && rm /tmp/hadoop.tar.gz*
